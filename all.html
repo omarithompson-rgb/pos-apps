@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>POS Apps</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="POS Apps">
+<meta name="apple-mobile-web-app-status-bar-style" content="black">
+<meta name="theme-color" content="#000000">
+<meta name="robots" content="noindex, nofollow">
+<meta name="referrer" content="no-referrer">
+<link rel="apple-touch-icon" sizes="180x180" href="pos-apps-180.png">
+<link rel="icon" type="image/png" href="pos-apps-180.png">
+<!-- One page for all the launchers: ONE QR code opens it, and it hands the link's "#" part (address + key, never sent to this host) on to each
+     app's own launcher page. In Safari a tile opens that launcher, to be added to the Home Screen with its logo. Added to the Home Screen itself,
+     this page is one icon that opens any of the apps inside it. It holds no address and no key. -->
+<style>
+*{box-sizing:border-box}
+html,body{height:100%;margin:0;background:#000;color:#f2f2f2;font:17px -apple-system,BlinkMacSystemFont,"Segoe UI",Arial,sans-serif;-webkit-text-size-adjust:100%}
+main{max-width:520px;margin:0 auto;padding:max(30px,env(safe-area-inset-top)) 18px 40px}
+h1{font-size:24px;margin:0 0 8px}
+p{color:#c9c9c9;line-height:1.5;margin:0 0 18px}
+ul{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:repeat(3,1fr);gap:20px 10px}
+a.app{display:block;text-align:center;color:#f2f2f2;text-decoration:none;padding:6px 2px;border-radius:14px}
+a.app img{width:76px;height:76px;border-radius:17px;display:block;margin:0 auto 8px}
+a.app span{font-size:14px;font-weight:600}
+#app{position:fixed;left:0;top:0;width:100%;height:100%;border:0;background:#000}
+#back{position:fixed;left:10px;bottom:calc(10px + env(safe-area-inset-bottom));z-index:3;min-width:64px;min-height:44px;padding:0 14px;border:1px solid #6a6a6a;border-radius:22px;background:#111;color:#f2f2f2;font:inherit;font-size:15px;font-weight:600}
+label{display:block;font-size:15px;color:#c9c9c9;margin:18px 0 6px}
+input{width:100%;font:inherit;padding:13px;border-radius:10px;border:1px solid #5a5a5a;background:#0b0b0b;color:#fff}
+#f button{width:100%;margin-top:12px;padding:15px;border:0;border-radius:12px;background:#f2f2f2;color:#000;font:inherit;font-weight:700}
+#err{min-height:22px;color:#ff8a8a;font-size:15px;margin-top:10px}
+:focus-visible{outline:3px solid #8ab4f8;outline-offset:2px}
+[hidden]{display:none !important}
+</style>
+</head>
+<body>
+<main id="grid" hidden>
+  <h1>POS apps</h1>
+  <p id="how"></p>
+  <ul id="apps">
+    <li><a class="app" data-page="icm" href="icm.html"><img src="pos-icm-180.png" alt=""><span>POS ICM</span></a></li>
+    <li><a class="app" data-page="noprd" href="noprd.html"><img src="pos-noprd-180.png" alt=""><span>POS NOPRD</span></a></li>
+    <li><a class="app" data-page="psr" href="psr.html"><img src="pos-psr-180.png" alt=""><span>POS PSR</span></a></li>
+    <li><a class="app" data-page="aws" href="aws.html"><img src="pos-aws-180.png" alt=""><span>POS AWS</span></a></li>
+    <li><a class="app" data-page="me" href="me.html"><img src="pos-me-180.png" alt=""><span>POS Me</span></a></li>
+    <li><a class="app" data-page="code" href="code.html"><img src="pos-code-180.png" alt=""><span>POS Code</span></a></li>
+    <li><a class="app" data-page="pay" href="pay.html"><img src="pos-pay-180.png" alt=""><span>POS Pay</span></a></li>
+    <li><a class="app" data-page="tasks" href="tasks.html"><img src="pos-tasks-180.png" alt=""><span>POS Tasks</span></a></li>
+    <li><a class="app" data-page="txt" href="txt.html"><img src="pos-texts-180.png" alt=""><span>POS Texts</span></a></li>
+    <li><a class="app" data-page="script" href="script.html"><img src="pos-script-180.png" alt=""><span>POS Script</span></a></li>
+    <li><a class="app" data-page="retain" href="retain.html"><img src="pos-retain-180.png" alt=""><span>POS Retain</span></a></li>
+    <li><a class="app" data-page="health" href="health.html"><img src="pos-status-180.png" alt=""><span>POS Status</span></a></li>
+  </ul>
+</main>
+<iframe id="app" title="POS app" allow="clipboard-write; clipboard-read" hidden></iframe>
+<button type="button" id="back" hidden>&#8249; Apps</button>
+<main id="setup" hidden>
+  <h1>POS apps</h1>
+  <p>This page opens your POS apps from your own link. Scan your QR code, or paste your POS link below. It is kept on this device only.</p>
+  <form id="f" autocomplete="off">
+    <label for="link">Your POS link</label>
+    <input id="link" type="url" inputmode="url" autocapitalize="off" autocorrect="off" spellcheck="false" required>
+    <button type="submit">Show my apps</button>
+    <div id="err" role="alert"></div>
+  </form>
+</main>
+<script>
+(function() {
+  var LS = 'pos_launch_all', C = null;
+  function $(i) { return document.getElementById(i); }
+  function parse(s) {   // the same rule as every launcher: "#u=<address>&k=<key>" or a POS link; only Google's Apps Script address is accepted
+    s = String(s || '').trim(); var u = '', k = '', i = s.indexOf('#'), h = i >= 0 ? s.slice(i + 1) : s;
+    try { var p = new URLSearchParams(h); u = p.get('u') || ''; k = p.get('k') || ''; } catch (e) {}
+    if (!u || !k) { var m = s.match(/^(https:\/\/script\.google\.com\/macros\/s\/[\w-]+\/exec)\?([^#]*)/); if (m) { try { u = m[1]; k = new URLSearchParams(m[2]).get('pk') || ''; } catch (e2) {} } }
+    if (!/^https:\/\/script\.google\.com\/macros\/s\/[\w-]+\/exec$/.test(u) || !/^[0-9A-Za-z_-]{8,64}$/.test(k)) return null;
+    return {u: u, k: k};
+  }
+  function frag(c) { return '#u=' + encodeURIComponent(c.u) + '&k=' + encodeURIComponent(c.k); }
+  function keep(c) { try { localStorage.setItem(LS, frag(c)); } catch (e) {} }
+  function kept() { try { return parse(localStorage.getItem(LS)); } catch (e) { return null; } }
+  function standalone() { try { return navigator.standalone === true || (window.matchMedia && matchMedia('(display-mode: standalone)').matches); } catch (e) { return false; } }
+  function tiles() { return [].slice.call(document.querySelectorAll('#apps a.app')); }
+  function show(c) {
+    C = c; tiles().forEach(function(a) { a.setAttribute('href', a.getAttribute('data-page') + '.html' + frag(c)); });
+    $('how').textContent = standalone() ? 'Tap an app to open it.' : 'Tap an app. When it opens, tap Share, then Add to Home Screen, and it keeps its logo. Come back here for the next one.';
+    $('setup').hidden = true; $('grid').hidden = false;
+  }
+  function openInside(page, name) { var f = $('app'); f.title = name; f.src = C.u + '?page=' + page + '&pk=' + encodeURIComponent(C.k); f.hidden = false; $('back').hidden = false; $('grid').hidden = true; }
+  var fromLink = parse(location.hash), c = fromLink || kept();
+  if (fromLink) keep(fromLink);
+  if (c) show(c); else $('setup').hidden = false;
+  $('apps').addEventListener('click', function(ev) { var a = ev.target; while (a && a !== this && !(a.classList && a.classList.contains('app'))) a = a.parentNode;
+    if (!a || a === this || !C || !standalone()) return;   // in Safari the tile is a plain link to that app's own launcher
+    ev.preventDefault(); openInside(a.getAttribute('data-page'), a.textContent.trim()); });
+  $('back').addEventListener('click', function() { var f = $('app'); f.hidden = true; f.removeAttribute('src'); $('back').hidden = true; $('grid').hidden = false; });
+  $('f').addEventListener('submit', function(ev) { ev.preventDefault(); var c2 = parse($('link').value);
+    if (!c2) { $('err').textContent = 'That is not a POS link. Paste the whole link, or scan the QR code instead.'; return; }
+    keep(c2); $('link').value = ''; $('err').textContent = ''; show(c2); });
+})();
+</script>
+</body>
+</html>

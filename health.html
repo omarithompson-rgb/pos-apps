@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>POS Status</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="POS Status">
+<meta name="apple-mobile-web-app-status-bar-style" content="black">
+<meta name="theme-color" content="#000000">
+<meta name="robots" content="noindex, nofollow">
+<meta name="referrer" content="no-referrer">
+<link rel="apple-touch-icon" sizes="180x180" href="pos-status-180.png">
+<link rel="icon" type="image/png" href="pos-status-180.png">
+<!-- Launcher for one personal web app. It holds no address and no key: both come in the link after "#" (which is not sent to this host) and are
+     kept on the device. It loads only https://script.google.com/macros/s/<id>/exec, inside this page, so the app keeps this page's name and icon. -->
+<style>
+*{box-sizing:border-box}
+html,body{height:100%;margin:0;background:#000;color:#f2f2f2;font:17px -apple-system,BlinkMacSystemFont,"Segoe UI",Arial,sans-serif;-webkit-text-size-adjust:100%}
+#app{position:fixed;left:0;top:0;width:100%;height:100%;border:0;background:#000}
+#tip{position:fixed;left:0;right:0;bottom:0;z-index:2;display:flex;gap:10px;align-items:center;padding:12px 14px calc(12px + env(safe-area-inset-bottom));background:#111;border-top:1px solid #3a3a3a;font-size:15px;line-height:1.35}
+#tip span{flex:1}
+#tip button{flex:0 0 auto;min-width:44px;min-height:44px;border:1px solid #5a5a5a;border-radius:10px;background:#000;color:#f2f2f2;font:inherit}
+main{max-width:440px;margin:0 auto;padding:48px 22px;text-align:center}
+main img{width:120px;height:120px;border-radius:27px}
+h1{font-size:24px;margin:18px 0 8px}
+p{color:#c9c9c9;line-height:1.5;margin:0 0 16px}
+label{display:block;text-align:left;font-size:15px;color:#c9c9c9;margin:18px 0 6px}
+input{width:100%;font:inherit;padding:13px;border-radius:10px;border:1px solid #5a5a5a;background:#0b0b0b;color:#fff}
+main button{width:100%;margin-top:12px;padding:15px;border:0;border-radius:12px;background:#f2f2f2;color:#000;font:inherit;font-weight:700}
+#err{min-height:22px;color:#ff8a8a;font-size:15px;margin-top:10px}
+:focus-visible{outline:3px solid #8ab4f8;outline-offset:2px}
+[hidden]{display:none !important}
+</style>
+</head>
+<body>
+<iframe id="app" title="POS Status" allow="clipboard-write; clipboard-read" hidden></iframe>
+<div id="tip" role="status" hidden><span>To keep POS Status with its logo: tap Share, then Add to Home Screen.</span><button type="button" id="tipX" aria-label="Hide this tip">OK</button></div>
+<main id="setup" hidden>
+  <img src="pos-status-180.png" alt="POS Status logo: a pulse line">
+  <h1>POS Status</h1>
+  <p>This page opens POS Status from your own link. Scan your QR code for POS Status, or paste your POS link below. It is kept on this device only.</p>
+  <form id="f" autocomplete="off">
+    <label for="link">Your POS link</label>
+    <input id="link" type="url" inputmode="url" autocapitalize="off" autocorrect="off" spellcheck="false" required>
+    <button type="submit">Open POS Status</button>
+    <div id="err" role="alert"></div>
+  </form>
+</main>
+<script>
+(function() {
+  var PAGE = 'health', LS = 'pos_launch_' + PAGE;
+  function $(i) { return document.getElementById(i); }
+  function parse(s) {   // "#u=<address>&k=<key>" (the QR link) · or a POS link "…/exec?…pk=<key>" · → {u, k} or null. Only Google's Apps Script address is accepted.
+    s = String(s || '').trim(); var u = '', k = '', i = s.indexOf('#'), h = i >= 0 ? s.slice(i + 1) : s;
+    try { var p = new URLSearchParams(h); u = p.get('u') || ''; k = p.get('k') || ''; } catch (e) {}
+    if (!u || !k) { var m = s.match(/^(https:\/\/script\.google\.com\/macros\/s\/[\w-]+\/exec)\?([^#]*)/); if (m) { try { u = m[1]; k = new URLSearchParams(m[2]).get('pk') || ''; } catch (e2) {} } }
+    if (!/^https:\/\/script\.google\.com\/macros\/s\/[\w-]+\/exec$/.test(u) || !/^[0-9A-Za-z_-]{8,64}$/.test(k)) return null;
+    return {u: u, k: k};
+  }
+  function keep(c) { try { localStorage.setItem(LS, '#u=' + encodeURIComponent(c.u) + '&k=' + encodeURIComponent(c.k)); } catch (e) {} }
+  function kept() { try { return parse(localStorage.getItem(LS)); } catch (e) { return null; } }
+  function standalone() { try { return navigator.standalone === true || (window.matchMedia && matchMedia('(display-mode: standalone)').matches); } catch (e) { return false; } }
+  function open(c) {
+    var f = $('app'); f.src = c.u + '?page=' + PAGE + '&pk=' + encodeURIComponent(c.k); f.hidden = false; $('setup').hidden = true;
+    var seen = false; try { seen = sessionStorage.getItem(LS + '_tip') === '1'; } catch (e) {}
+    $('tip').hidden = standalone() || seen;
+  }
+  var fromLink = parse(location.hash), c = fromLink || kept();
+  if (fromLink) keep(fromLink);
+  if (c) open(c); else { $('setup').hidden = false; }
+  $('tipX').addEventListener('click', function() { $('tip').hidden = true; try { sessionStorage.setItem(LS + '_tip', '1'); } catch (e) {} });
+  $('f').addEventListener('submit', function(ev) { ev.preventDefault(); var c2 = parse($('link').value);
+    if (!c2) { $('err').textContent = 'That is not a POS link. Paste the whole link, or scan the QR code instead.'; return; }
+    keep(c2); $('link').value = ''; $('err').textContent = ''; open(c2); });
+})();
+</script>
+</body>
+</html>
